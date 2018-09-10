@@ -99,7 +99,12 @@ static ssize_t recv_msg(int sock, int *fd_out, void *buf, size_t buf_len) {
 	ssize_t ret;
 	do {
 		ret = recvmsg(sock, &msghdr, MSG_CMSG_CLOEXEC);
-	} while (ret < 0 && errno == EINTR);
+#ifdef __FreeBSD__
+	} while ((ret < 0 && errno == EINTR) ||
+			(ret == 0 && !(msghdr.msg_flags & MSG_TRUNC)));
+#else
+	} while ((ret < 0 && errno == EINTR));
+#endif
 
 	if (fd_out) {
 		struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msghdr);
@@ -208,11 +213,8 @@ int direct_ipc_open(int sock, const char *path) {
 
 	send_msg(sock, -1, &msg, sizeof(msg));
 
-	int fd, err, ret;
-	int retry = 0;
-	do {
-		ret = recv_msg(sock, &fd, &err, sizeof(err));
-	} while (ret == 0 && retry++ < 3);
+	int fd, err;
+	recv_msg(sock, &fd, &err, sizeof(err));
 
 	return err ? -err : fd;
 }
