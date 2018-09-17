@@ -120,6 +120,7 @@ struct wlr_drm_connector {
 
 	enum wlr_drm_connector_state state;
 	struct wlr_output_mode *desired_mode;
+	bool desired_enabled;
 	uint32_t id;
 
 	struct wlr_drm_crtc *crtc;
@@ -143,6 +144,6 @@ void finish_drm_resources(struct wlr_drm_backend *drm);
 void restore_drm_outputs(struct wlr_drm_backend *drm);
 void scan_drm_connectors(struct wlr_drm_backend *state);
 int handle_drm_event(int fd, uint32_t mask, void *data);
-void enable_drm_connector(struct wlr_output *output, bool enable);
+bool enable_drm_connector(struct wlr_output *output, bool enable);
 
 #endif

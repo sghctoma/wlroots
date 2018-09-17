@@ -142,14 +142,15 @@ static void output_update_matrix(struct wlr_output *output) {
 		output->height, output->transform);
 }
 
-void wlr_output_enable(struct wlr_output *output, bool enable) {
+bool wlr_output_enable(struct wlr_output *output, bool enable) {
 	if (output->enabled == enable) {
-		return;
+		return true;
 	}
 
 	if (output->impl->enable) {
-		output->impl->enable(output, enable);
+		return output->impl->enable(output, enable);
 	}
+	return false;
 }
 
 bool wlr_output_set_mode(struct wlr_output *output,
@@ -718,6 +719,13 @@ static bool output_cursor_attempt_hardware(struct wlr_output_cursor *cursor) {
 		texture = wlr_surface_get_texture(cursor->surface);
 		scale = cursor->surface->current.scale;
 		transform = cursor->surface->current.transform;
+	}
+
+	const char *no_hardware_cursors = getenv("WLR_NO_HARDWARE_CURSORS");
+	if (no_hardware_cursors != NULL && strcmp(no_hardware_cursors, "1") == 0) {
+		wlr_log(WLR_DEBUG,
+			"WLR_NO_HARDWARE_CURSORS set, forcing software cursors");
+		return false;
 	}
 
 	struct wlr_output_cursor *hwcur = cursor->output->hardware_cursor;
