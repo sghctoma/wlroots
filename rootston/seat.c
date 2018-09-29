@@ -178,9 +178,18 @@ static void handle_tool_axis(struct wl_listener *listener, void *data) {
 			roots_tool->tablet_v2_tool, event->distance);
 	}
 
+	if (event->updated_axes & WLR_TABLET_TOOL_AXIS_TILT_X) {
+		roots_tool->tilt_x = event->tilt_x;
+	}
+
+	if (event->updated_axes & WLR_TABLET_TOOL_AXIS_TILT_Y) {
+		roots_tool->tilt_y = event->tilt_y;
+	}
+
 	if (event->updated_axes & (WLR_TABLET_TOOL_AXIS_TILT_X | WLR_TABLET_TOOL_AXIS_TILT_Y)) {
 		wlr_tablet_v2_tablet_tool_notify_tilt(
-			roots_tool->tablet_v2_tool, event->tilt_x, event->tilt_y);
+			roots_tool->tablet_v2_tool,
+			roots_tool->tilt_x, roots_tool->tilt_y);
 	}
 
 	if (event->updated_axes & WLR_TABLET_TOOL_AXIS_ROTATION) {
@@ -285,6 +294,12 @@ static void handle_tool_proximity(struct wl_listener *listener, void *data) {
 		wl_list_init(&roots_tool->tool_link);
 	}
 
+	if (event->state == WLR_TABLET_TOOL_PROXIMITY_OUT) {
+		struct roots_tablet_tool *roots_tool = tool->data;
+		wlr_tablet_v2_tablet_tool_notify_proximity_out(roots_tool->tablet_v2_tool);
+		return;
+	}
+
 	handle_tablet_tool_position(cursor, event->device->data, event->tool,
 		true, true, event->x, event->y, 0, 0);
 }
@@ -297,6 +312,14 @@ static void handle_request_set_cursor(struct wl_listener *listener,
 	wlr_idle_notify_activity(desktop->idle, cursor->seat->seat);
 	struct wlr_seat_pointer_request_set_cursor_event *event = data;
 	roots_cursor_handle_request_set_cursor(cursor, event);
+}
+
+static void handle_pointer_focus_change(struct wl_listener *listener,
+		void *data) {
+	struct roots_cursor *cursor =
+		wl_container_of(listener, cursor, focus_change);
+	struct wlr_seat_pointer_focus_change_event *event = data;
+	roots_cursor_handle_focus_change(cursor, event);
 }
 
 static void seat_reset_device_mappings(struct roots_seat *seat,
@@ -434,6 +457,12 @@ static void roots_seat_init_cursor(struct roots_seat *seat) {
 	wl_signal_add(&seat->seat->events.request_set_cursor,
 		&seat->cursor->request_set_cursor);
 	seat->cursor->request_set_cursor.notify = handle_request_set_cursor;
+
+	wl_signal_add(&seat->seat->pointer_state.events.focus_change,
+		&seat->cursor->focus_change);
+	seat->cursor->focus_change.notify = handle_pointer_focus_change;
+
+	wl_list_init(&seat->cursor->constraint_commit.link);
 }
 
 static void roots_drag_icon_handle_surface_commit(struct wl_listener *listener,
@@ -567,6 +596,7 @@ struct roots_seat *roots_seat_create(struct roots_input *input, char *name) {
 		free(seat);
 		return NULL;
 	}
+	seat->seat->data = seat;
 
 	roots_seat_init_cursor(seat);
 	if (!seat->cursor) {
@@ -1186,6 +1216,10 @@ void roots_seat_set_focus(struct roots_seat *seat, struct roots_view *view) {
 		wlr_seat_keyboard_notify_enter(seat->seat, view->wlr_surface,
 			NULL, 0, NULL);
 	}
+
+	if (seat->cursor) {
+		roots_cursor_update_focus(seat->cursor);
+	}
 }
 
 /**
@@ -1219,6 +1253,11 @@ void roots_seat_set_focus_layer(struct roots_seat *seat,
 	} else {
 		wlr_seat_keyboard_notify_enter(seat->seat, layer->surface,
 			NULL, 0, NULL);
+	}
+
+
+	if (seat->cursor) {
+		roots_cursor_update_focus(seat->cursor);
 	}
 }
 
