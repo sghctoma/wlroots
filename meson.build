@@ -42,7 +42,7 @@ endif
 # Avoid wl_buffer deprecation warnings
 add_project_arguments('-DWL_HIDE_DEPRECATED', language: 'c')
 
-wayland_server = dependency('wayland-server', version: '>=1.15')
+wayland_server = dependency('wayland-server', version: '>=1.16')
 wayland_client = dependency('wayland-client')
 wayland_egl    = dependency('wayland-egl')
 wayland_protos = dependency('wayland-protocols', version: '>=1.15')
@@ -55,7 +55,7 @@ xkbcommon      = dependency('xkbcommon')
 udev           = dependency('libudev')
 pixman         = dependency('pixman-1')
 libcap         = dependency('libcap', required: get_option('libcap'))
-logind         = dependency('lib' + get_option('logind-provider'), required: get_option('logind'))
+logind         = dependency('lib' + get_option('logind-provider'), required: get_option('logind'), version: '>=237')
 math           = cc.find_library('m', required: false)
 
 wlr_parts = []

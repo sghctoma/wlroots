@@ -66,8 +66,14 @@ static bool output_swap_buffers(struct wlr_output *wlr_output,
 	output->frame_callback = wl_surface_frame(output->surface);
 	wl_callback_add_listener(output->frame_callback, &frame_listener, output);
 
-	return wlr_egl_swap_buffers(&output->backend->egl, output->egl_surface,
-		damage);
+	if (!wlr_egl_swap_buffers(&output->backend->egl,
+			output->egl_surface, damage)) {
+		return false;
+	}
+
+	// TODO: if available, use the presentation-time protocol
+	wlr_output_send_present(wlr_output, NULL);
+	return true;
 }
 
 static void output_transform(struct wlr_output *wlr_output,
@@ -186,9 +192,22 @@ void update_wl_output_cursor(struct wlr_wl_output *output) {
 	}
 }
 
-bool output_move_cursor(struct wlr_output *_output, int x, int y) {
+static bool output_move_cursor(struct wlr_output *_output, int x, int y) {
 	// TODO: only return true if x == current x and y == current y
 	return true;
+}
+
+static void output_schedule_frame(struct wlr_output *wlr_output) {
+	struct wlr_wl_output *output = get_wl_output_from_output(wlr_output);
+
+	if (output->frame_callback != NULL) {
+		wlr_log(WLR_ERROR, "Skipping frame scheduling");
+		return;
+	}
+
+	output->frame_callback = wl_surface_frame(output->surface);
+	wl_callback_add_listener(output->frame_callback, &frame_listener, output);
+	wl_surface_commit(output->surface);
 }
 
 static const struct wlr_output_impl output_impl = {
@@ -199,6 +218,7 @@ static const struct wlr_output_impl output_impl = {
 	.swap_buffers = output_swap_buffers,
 	.set_cursor = output_set_cursor,
 	.move_cursor = output_move_cursor,
+	.schedule_frame = output_schedule_frame,
 };
 
 bool wlr_output_is_wl(struct wlr_output *wlr_output) {

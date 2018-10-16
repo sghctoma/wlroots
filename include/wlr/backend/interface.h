@@ -10,6 +10,7 @@
 #define WLR_BACKEND_INTERFACE_H
 
 #include <stdbool.h>
+#include <time.h>
 #include <wlr/backend.h>
 #include <wlr/render/egl.h>
 
@@ -17,6 +18,8 @@ struct wlr_backend_impl {
 	bool (*start)(struct wlr_backend *backend);
 	void (*destroy)(struct wlr_backend *backend);
 	struct wlr_renderer *(*get_renderer)(struct wlr_backend *backend);
+	struct wlr_session *(*get_session)(struct wlr_backend *backend);
+	clockid_t (*get_presentation_clock)(struct wlr_backend *backend);
 };
 
 /**

@@ -1,4 +1,4 @@
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200112L
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -881,7 +881,6 @@ struct roots_desktop *desktop_create(struct roots_server *server,
 
 	desktop->tablet_v2 = wlr_tablet_v2_create(server->wl_display);
 
-#ifdef WLR_HAS_XWAYLAND
 	const char *cursor_theme = NULL;
 	const char *cursor_default = ROOTS_XCURSOR_DEFAULT;
 	struct roots_cursor_config *cc =
@@ -893,6 +892,15 @@ struct roots_desktop *desktop_create(struct roots_server *server,
 		}
 	}
 
+	char cursor_size_fmt[16];
+	snprintf(cursor_size_fmt, sizeof(cursor_size_fmt),
+		"%d", ROOTS_XCURSOR_SIZE);
+	setenv("XCURSOR_SIZE", cursor_size_fmt, 1);
+	if (cursor_theme != NULL) {
+		setenv("XCURSOR_THEME", cursor_theme, 1);
+	}
+
+#ifdef WLR_HAS_XWAYLAND
 	desktop->xcursor_manager = wlr_xcursor_manager_create(cursor_theme,
 		ROOTS_XCURSOR_SIZE);
 	if (desktop->xcursor_manager == NULL) {
@@ -949,6 +957,11 @@ struct roots_desktop *desktop_create(struct roots_server *server,
 	wl_signal_add(&desktop->input_inhibit->events.deactivate,
 		&desktop->input_inhibit_deactivate);
 
+	desktop->input_method =
+		wlr_input_method_manager_v2_create(server->wl_display);
+
+	desktop->text_input = wlr_text_input_manager_v3_create(server->wl_display);
+
 	desktop->virtual_keyboard = wlr_virtual_keyboard_manager_v1_create(
 		server->wl_display);
 	wl_signal_add(&desktop->virtual_keyboard->events.new_virtual_keyboard,
@@ -968,6 +981,9 @@ struct roots_desktop *desktop_create(struct roots_server *server,
 	desktop->pointer_constraint.notify = handle_pointer_constraint;
 	wl_signal_add(&desktop->pointer_constraints->events.new_constraint,
 		&desktop->pointer_constraint);
+
+	desktop->presentation =
+		wlr_presentation_create(server->wl_display, server->backend);
 
 	return desktop;
 }

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <wlr/backend/drm.h>
@@ -57,6 +58,9 @@ struct wlr_drm_crtc {
 	union wlr_drm_crtc_props props;
 
 	struct wl_list connectors;
+
+	uint16_t *gamma_table;
+	size_t gamma_table_size;
 };
 
 struct wlr_drm_backend {
@@ -64,6 +68,7 @@ struct wlr_drm_backend {
 
 	struct wlr_drm_backend *parent;
 	const struct wlr_drm_interface *iface;
+	clockid_t clock;
 
 	int fd;
 
@@ -151,5 +156,7 @@ void restore_drm_outputs(struct wlr_drm_backend *drm);
 void scan_drm_connectors(struct wlr_drm_backend *state);
 int handle_drm_event(int fd, uint32_t mask, void *data);
 bool enable_drm_connector(struct wlr_output *output, bool enable);
+bool set_drm_connector_gamma(struct wlr_output *output, size_t size,
+	const uint16_t *r, const uint16_t *g, const uint16_t *b);
 
 #endif

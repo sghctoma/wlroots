@@ -266,6 +266,7 @@ void wlr_output_init(struct wlr_output *output, struct wlr_backend *backend,
 	wl_signal_init(&output->events.frame);
 	wl_signal_init(&output->events.needs_swap);
 	wl_signal_init(&output->events.swap_buffers);
+	wl_signal_init(&output->events.present);
 	wl_signal_init(&output->events.enable);
 	wl_signal_init(&output->events.mode);
 	wl_signal_init(&output->events.scale);
@@ -297,15 +298,15 @@ void wlr_output_destroy(struct wlr_output *output) {
 
 	wlr_signal_emit_safe(&output->events.destroy, output);
 
-	struct wlr_output_mode *mode, *tmp_mode;
-	wl_list_for_each_safe(mode, tmp_mode, &output->modes, link) {
-		wl_list_remove(&mode->link);
-		free(mode);
-	}
+	// The backend is responsible for free-ing the list of modes
 
 	struct wlr_output_cursor *cursor, *tmp_cursor;
 	wl_list_for_each_safe(cursor, tmp_cursor, &output->cursors, link) {
 		wlr_output_cursor_destroy(cursor);
+	}
+
+	if (output->idle_frame != NULL) {
+		wl_event_source_remove(output->idle_frame);
 	}
 
 	pixman_region32_fini(&output->damage);
@@ -544,8 +545,10 @@ void wlr_output_send_frame(struct wlr_output *output) {
 static void schedule_frame_handle_idle_timer(void *data) {
 	struct wlr_output *output = data;
 	output->idle_frame = NULL;
-	if (!output->frame_pending) {
-		wlr_output_send_frame(output);
+	if (!output->frame_pending && output->impl->schedule_frame) {
+		// Ask the backend to send a frame event when appropriate
+		output->frame_pending = true;
+		output->impl->schedule_frame(output);
 	}
 }
 
@@ -554,21 +557,46 @@ void wlr_output_schedule_frame(struct wlr_output *output) {
 		return;
 	}
 
-	// TODO: ask the backend to send a frame event when appropriate instead
+	// We're using an idle timer here in case a buffer swap happens right after
+	// this function is called
 	struct wl_event_loop *ev = wl_display_get_event_loop(output->display);
 	output->idle_frame =
 		wl_event_loop_add_idle(ev, schedule_frame_handle_idle_timer, output);
 }
 
-bool wlr_output_set_gamma(struct wlr_output *output, uint32_t size,
-		uint16_t *r, uint16_t *g, uint16_t *b) {
+void wlr_output_send_present(struct wlr_output *output,
+		struct wlr_output_event_present *event) {
+	struct wlr_output_event_present _event = {0};
+	if (event == NULL) {
+		event = &_event;
+	}
+
+	event->output = output;
+
+	struct timespec now;
+	if (event->when == NULL) {
+		clockid_t clock = wlr_backend_get_presentation_clock(output->backend);
+		errno = 0;
+		if (clock_gettime(clock, &now) != 0) {
+			wlr_log_errno(WLR_ERROR, "failed to send output present event: "
+				"failed to read clock");
+			return;
+		}
+		event->when = &now;
+	}
+
+	wlr_signal_emit_safe(&output->events.present, event);
+}
+
+bool wlr_output_set_gamma(struct wlr_output *output, size_t size,
+		const uint16_t *r, const uint16_t *g, const uint16_t *b) {
 	if (!output->impl->set_gamma) {
 		return false;
 	}
 	return output->impl->set_gamma(output, size, r, g, b);
 }
 
-uint32_t wlr_output_get_gamma_size(struct wlr_output *output) {
+size_t wlr_output_get_gamma_size(struct wlr_output *output) {
 	if (!output->impl->get_gamma_size) {
 		return 0;
 	}
