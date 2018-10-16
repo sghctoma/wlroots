@@ -6,6 +6,14 @@ libavutil = dependency('libavutil', version: '>=56.14.100', required: false)
 libavcodec = dependency('libavcodec', version: '>=58.18.100', required: false)
 libavformat = dependency('libavformat', version: '>=58.12.100', required: false)
 
+if host_machine.system() == 'freebsd'
+	libepoll = [cc.find_library('epoll-shim', dirs: '/usr/local/lib/')]
+	libepoll_inc = [include_directories('/usr/local/include/libepoll-shim')]
+else
+	libepoll = []
+	libepoll_inc = []
+endif
+
 # Small hack until https://github.com/mesonbuild/meson/pull/3386/ is merged
 foreach dep : ['libpng', 'libavutil', 'libavcodec', 'libavformat']
 	if not get_variable(dep).found()
@@ -97,7 +105,8 @@ examples = {
 	},
 	'input-method': {
 	    'src': 'input-method.c',
-	    'dep': [wayland_client, wlr_protos, wlroots],
+	    'dep': [wayland_client, wlr_protos, wlroots] + libepoll,
+		'inc': libepoll_inc
     },
 	'text-input': {
 	    'src': 'text-input.c',
@@ -115,6 +124,7 @@ foreach name, info : examples
 			name,
 			info.get('src'),
 			dependencies: info.get('dep'),
+			include_directories: info.has_key('inc') ? info.get('inc') : [],
 			build_by_default: get_option('examples'),
 		)
 	else
