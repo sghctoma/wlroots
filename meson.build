@@ -157,6 +157,12 @@ message('\n'.join(summary))
 subdir('examples')
 subdir('rootston')
 
+if host_machine.system() == 'freebsd'
+	pkgconfig_install_dir = join_paths(prefix, 'libdata/pkgconfig')
+else
+	pkgconfig_install_dir = join_paths(prefix, libdir, 'pkgconfig')
+endif
+
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(
 	libraries: lib_wlr,
@@ -164,6 +170,7 @@ pkgconfig.generate(
 	filebase: meson.project_name(),
 	name: meson.project_name(),
 	description: 'Wayland compositor library',
+	install_dir: pkgconfig_install_dir,
 )
 
 git = find_program('git', required: false)
