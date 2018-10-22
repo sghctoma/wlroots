@@ -6,12 +6,11 @@ libavutil = dependency('libavutil', version: '>=56.14.100', required: false)
 libavcodec = dependency('libavcodec', version: '>=58.18.100', required: false)
 libavformat = dependency('libavformat', version: '>=58.12.100', required: false)
 
+# epoll is a separate library in FreeBSD
 if host_machine.system() == 'freebsd'
-	libepoll = [cc.find_library('epoll-shim', dirs: '/usr/local/lib/')]
-	libepoll_inc = [include_directories('/usr/local/include/libepoll-shim')]
+	libepoll = [dependency('epoll-shim')]
 else
 	libepoll = []
-	libepoll_inc = []
 endif
 
 # Small hack until https://github.com/mesonbuild/meson/pull/3386/ is merged
@@ -106,7 +105,10 @@ examples = {
 	'input-method': {
 	    'src': 'input-method.c',
 	    'dep': [wayland_client, wlr_protos, wlroots] + libepoll,
+<<<<<<< HEAD
 		'inc': libepoll_inc
+=======
+>>>>>>> upstream/master
     },
 	'text-input': {
 	    'src': 'text-input.c',
