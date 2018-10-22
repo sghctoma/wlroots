@@ -31,6 +31,7 @@ conf_data = configuration_data()
 wlr_inc = include_directories('.', 'include')
 
 cc = meson.get_compiler('c')
+prefix = get_option('prefix')
 
 # Clang complains about some zeroed initializer lists (= {0}), even though they
 # are valid

@@ -105,10 +105,6 @@ examples = {
 	'input-method': {
 	    'src': 'input-method.c',
 	    'dep': [wayland_client, wlr_protos, wlroots] + libepoll,
-<<<<<<< HEAD
-		'inc': libepoll_inc
-=======
->>>>>>> upstream/master
     },
 	'text-input': {
 	    'src': 'text-input.c',
@@ -126,7 +122,6 @@ foreach name, info : examples
 			name,
 			info.get('src'),
 			dependencies: info.get('dep'),
-			include_directories: info.has_key('inc') ? info.get('inc') : [],
 			build_by_default: get_option('examples'),
 		)
 	else
