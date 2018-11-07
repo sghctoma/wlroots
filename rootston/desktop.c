@@ -439,6 +439,11 @@ void view_destroy(struct roots_view *view) {
 		view_unmap(view);
 	}
 
+	// Can happen if fullscreened while unmapped, and hasn't been mapped
+	if (view->fullscreen_output != NULL) {
+		view->fullscreen_output->fullscreen_view = NULL;
+	}
+
 	if (view->destroy) {
 		view->destroy(view);
 	}
@@ -574,6 +579,9 @@ static bool view_at(struct roots_view *view, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy) {
 	if (view->type == ROOTS_WL_SHELL_VIEW &&
 			view->wl_shell_surface->state == WLR_WL_SHELL_SURFACE_STATE_POPUP) {
+		return false;
+	}
+	if (view->wlr_surface == NULL) {
 		return false;
 	}
 
@@ -882,14 +890,18 @@ struct roots_desktop *desktop_create(struct roots_server *server,
 	desktop->tablet_v2 = wlr_tablet_v2_create(server->wl_display);
 
 	const char *cursor_theme = NULL;
+#ifdef WLR_HAS_XWAYLAND
 	const char *cursor_default = ROOTS_XCURSOR_DEFAULT;
+#endif
 	struct roots_cursor_config *cc =
 		roots_config_get_cursor(config, ROOTS_CONFIG_DEFAULT_SEAT_NAME);
 	if (cc != NULL) {
 		cursor_theme = cc->theme;
+#ifdef WLR_HAS_XWAYLAND
 		if (cc->default_image != NULL) {
 			cursor_default = cc->default_image;
 		}
+#endif
 	}
 
 	char cursor_size_fmt[16];

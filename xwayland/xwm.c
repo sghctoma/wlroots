@@ -28,7 +28,7 @@ const char *atom_map[ATOM_LAST] = {
 	"UTF8_STRING",
 	"WM_S0",
 	"_NET_SUPPORTED",
-	"_NET_WM_S0",
+	"_NET_WM_CM_S0",
 	"_NET_WM_PID",
 	"_NET_WM_NAME",
 	"_NET_WM_STATE",
@@ -559,6 +559,15 @@ static void read_surface_normal_hints(struct wlr_xwm *xwm,
 	}
 	memcpy(xsurface->size_hints, &size_hints,
 		sizeof(struct wlr_xwayland_surface_size_hints));
+
+	if ((size_hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) == 0) {
+		xsurface->size_hints->min_width = -1;
+		xsurface->size_hints->min_height = -1;
+	}
+	if ((size_hints.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) == 0) {
+		xsurface->size_hints->max_width = -1;
+		xsurface->size_hints->max_height = -1;
+	}
 
 	wlr_log(WLR_DEBUG, "WM_NORMAL_HINTS (%d)", reply->value_len);
 }
@@ -1523,7 +1532,7 @@ static void xwm_create_wm_window(struct wlr_xwm *xwm) {
 
 	xcb_set_selection_owner(xwm->xcb_conn,
 		xwm->window,
-		xwm->atoms[NET_WM_S0],
+		xwm->atoms[NET_WM_CM_S0],
 		XCB_CURRENT_TIME);
 }
 
