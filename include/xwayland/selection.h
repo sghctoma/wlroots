@@ -7,6 +7,8 @@
 
 #define XDND_VERSION 5
 
+struct wlr_primary_selection_source;
+
 struct wlr_xwm_selection;
 
 struct wlr_xwm_selection_transfer {

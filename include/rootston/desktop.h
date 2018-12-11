@@ -4,6 +4,7 @@
 #include <wayland-server.h>
 #include <wlr/config.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_gamma_control.h>
 #include <wlr/types/wlr_idle_inhibit_v1.h>
@@ -15,7 +16,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_presentation_time.h>
-#include <wlr/types/wlr_primary_selection.h>
+#include <wlr/types/wlr_gtk_primary_selection.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_screenshooter.h>
 #include <wlr/types/wlr_text_input_v3.h>
@@ -51,7 +52,7 @@ struct roots_desktop {
 	struct wlr_export_dmabuf_manager_v1 *export_dmabuf_manager_v1;
 	struct wlr_server_decoration_manager *server_decoration_manager;
 	struct wlr_xdg_decoration_manager_v1 *xdg_decoration_manager;
-	struct wlr_primary_selection_device_manager *primary_selection_device_manager;
+	struct wlr_gtk_primary_selection_device_manager *primary_selection_device_manager;
 	struct wlr_idle *idle;
 	struct wlr_idle_inhibit_manager_v1 *idle_inhibit;
 	struct wlr_input_inhibit_manager *input_inhibit;
@@ -63,6 +64,7 @@ struct roots_desktop {
 	struct wlr_tablet_manager_v2 *tablet_v2;
 	struct wlr_pointer_constraints_v1 *pointer_constraints;
 	struct wlr_presentation *presentation;
+	struct wlr_foreign_toplevel_manager_v1 *foreign_toplevel_manager_v1;
 
 	struct wl_listener new_output;
 	struct wl_listener layout_change;
@@ -99,8 +101,8 @@ void view_destroy(struct roots_view *view);
 void view_activate(struct roots_view *view, bool activate);
 void view_apply_damage(struct roots_view *view);
 void view_damage_whole(struct roots_view *view);
-void view_update_position(struct roots_view *view, double x, double y);
-void view_update_size(struct roots_view *view, uint32_t width, uint32_t height);
+void view_update_position(struct roots_view *view, int x, int y);
+void view_update_size(struct roots_view *view, int width, int height);
 void view_update_decorated(struct roots_view *view, bool decorated);
 void view_initial_focus(struct roots_view *view);
 void view_map(struct roots_view *view, struct wlr_surface *surface);

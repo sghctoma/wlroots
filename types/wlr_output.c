@@ -6,6 +6,7 @@
 #include <time.h>
 #include <wayland-server.h>
 #include <wlr/interfaces/wlr_output.h>
+#include <wlr/render/interface.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_matrix.h>
@@ -339,6 +340,20 @@ bool wlr_output_make_current(struct wlr_output *output, int *buffer_age) {
 	return output->impl->make_current(output, buffer_age);
 }
 
+bool wlr_output_preferred_read_format(struct wlr_output *output,
+		enum wl_shm_format *fmt) {
+	if (!wlr_output_make_current(output, NULL)) {
+		return false;
+	}
+
+	struct wlr_renderer *renderer = wlr_backend_get_renderer(output->backend);
+	if (!renderer->impl->preferred_read_format || !renderer->impl->read_pixels) {
+		return false;
+	}
+	*fmt = renderer->impl->preferred_read_format(renderer);
+	return true;
+}
+
 bool wlr_output_swap_buffers(struct wlr_output *output, struct timespec *when,
 		pixman_region32_t *damage) {
 	if (output->frame_pending) {
@@ -349,9 +364,6 @@ bool wlr_output_swap_buffers(struct wlr_output *output, struct timespec *when,
 		wl_event_source_remove(output->idle_frame);
 		output->idle_frame = NULL;
 	}
-
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
 
 	struct timespec now;
 	if (when == NULL) {
@@ -369,18 +381,11 @@ bool wlr_output_swap_buffers(struct wlr_output *output, struct timespec *when,
 	pixman_region32_t render_damage;
 	pixman_region32_init(&render_damage);
 	pixman_region32_union_rect(&render_damage, &render_damage, 0, 0,
-		width, height);
+		output->width, output->height);
 	if (damage != NULL) {
 		// Damage tracking supported
 		pixman_region32_intersect(&render_damage, &render_damage, damage);
 	}
-
-	// Transform damage into renderer coordinates, ie. upside down
-	// TODO: take transformed coords, make the renderer flip the damage
-	enum wl_output_transform transform =
-		wlr_output_transform_invert(output->transform);
-	wlr_region_transform(&render_damage, &render_damage, transform,
-		width, height);
 
 	if (!output->impl->swap_buffers(output, damage ? &render_damage : NULL)) {
 		pixman_region32_fini(&render_damage);
