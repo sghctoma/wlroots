@@ -7,11 +7,7 @@
 #include <wlr/util/edges.h>
 #include <wlr/util/log.h>
 #include <wlr/util/region.h>
-#ifdef __linux__
 #include <linux/input-event-codes.h>
-#elif __FreeBSD__
-#include <dev/evdev/input-event-codes.h>
-#endif
 #include "rootston/cursor.h"
 #include "rootston/desktop.h"
 #include "rootston/view.h"
@@ -35,7 +31,8 @@ void roots_cursor_destroy(struct roots_cursor *cursor) {
 	// TODO
 }
 
-static void seat_view_deco_motion(struct roots_seat_view *view, double deco_sx, double deco_sy) {
+static void seat_view_deco_motion(struct roots_seat_view *view,
+		double deco_sx, double deco_sy) {
 	struct roots_cursor *cursor = view->seat->cursor;
 
 	double sx = deco_sx;
@@ -310,6 +307,14 @@ void roots_cursor_handle_motion(struct roots_cursor *cursor,
 	double dx = event->delta_x;
 	double dy = event->delta_y;
 
+	double dx_unaccel = event->unaccel_dx;
+	double dy_unaccel = event->unaccel_dy;
+
+	wlr_relative_pointer_manager_v1_send_relative_motion(
+		cursor->seat->input->server->desktop->relative_pointer_manager,
+		cursor->seat->seat, (uint64_t)event->time_msec * 1000, dx, dy,
+		dx_unaccel, dy_unaccel);
+
 	if (cursor->active_constraint) {
 		struct roots_view *view = cursor->pointer_view->view;
 		assert(view);
@@ -348,6 +353,12 @@ void roots_cursor_handle_motion_absolute(struct roots_cursor *cursor,
 	double lx, ly;
 	wlr_cursor_absolute_to_layout_coords(cursor->cursor, event->device, event->x,
 		event->y, &lx, &ly);
+
+	double dx = lx - cursor->cursor->x;
+	double dy = ly - cursor->cursor->y;
+	wlr_relative_pointer_manager_v1_send_relative_motion(
+		cursor->seat->input->server->desktop->relative_pointer_manager,
+		cursor->seat->seat, (uint64_t)event->time_msec * 1000, dx, dy, dx, dy);
 
 	if (cursor->pointer_view) {
 		struct roots_view *view = cursor->pointer_view->view;
